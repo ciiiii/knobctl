@@ -1,0 +1,76 @@
+name: release
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      # Uses release-please-config.json + .release-please-manifest.json (manifest mode);
+      # the rust release-type bumps Cargo.toml and Cargo.lock on the release PR.
+      - uses: googleapis/release-please-action@v4
+        id: rp
+
+  attach-binaries:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      # hidapi builds against libudev on Linux; macOS uses the system IOKit backend.
+      - name: Install Linux HID dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libudev-dev
+
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+
+      # Same archive layout `make dist` produces locally.
+      - name: Package
+        id: package
+        run: |
+          tag="${{ needs.release-please.outputs.tag_name }}"
+          name="knobctl-${tag#v}-${{ matrix.target }}"
+          mkdir -p "dist/$name"
+          cp target/${{ matrix.target }}/release/knobctl "dist/$name/"
+          cp README.md LICENSE mapping.example.yaml "dist/$name/"
+          tar -czf "dist/$name.tar.gz" -C dist "$name"
+          (cd dist && shasum -a 256 "$name.tar.gz" > "$name.tar.gz.sha256")
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - run: gh release upload "${{ needs.release-please.outputs.tag_name }}" "dist/${{ steps.package.outputs.name }}.tar.gz" "dist/${{ steps.package.outputs.name }}.tar.gz.sha256" --clobber
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

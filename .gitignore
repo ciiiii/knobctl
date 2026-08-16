@@ -1,0 +1,12 @@
+/target
+/dist
+.DS_Store
+
+# capture-hook build artifact (`make hook`)
+hidhook.dylib
+
+# local vendor configuration app used only for protocol capture
+*.app/
+
+# local editor / agent settings
+.claude/

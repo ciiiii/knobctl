@@ -1,0 +1,26 @@
+[package]
+name = "knobctl"
+version = "0.1.0"
+edition = "2021"
+description = "CLI to program shortcut mappings on CH57x BLE macro knobs (VID 0x514C / PID 0x8850)"
+license = "MIT"
+repository = "https://github.com/ciiiii/knobctl"
+readme = "README.md"
+keywords = ["hid", "ch57x", "macro-knob", "rotary-encoder", "cli"]
+categories = ["command-line-utilities", "hardware-support"]
+
+[[bin]]
+name = "knobctl"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+hidapi = "2"
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+
+[profile.release]
+strip = true
+opt-level = "z"
+lto = true

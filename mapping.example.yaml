@@ -1,0 +1,11 @@
+# knobctl mapping — what each action emits.
+# Program it with:  knobctl apply mapping.example.yaml
+# Preview bytes:    knobctl apply mapping.example.yaml --dry-run
+
+layer: 0            # optional; the device has 3 layers (0..2), default 0
+
+knobs:
+  # knob 0 (the only knob on a single-knob unit)
+  - ccw: volumedown # rotate left
+    press: enter    # push the knob (e.g. approve Claude Code prompts)
+    cw: volumeup    # rotate right
